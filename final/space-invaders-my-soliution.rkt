@@ -20,7 +20,8 @@
 
 (define HIT-RANGE 10)
 
-(define INVADE-RATE 100)
+(define INVADE-RATE 50)
+(define INVADER-MAX-SPEED 10)
 
 (define BACKGROUND (empty-scene WIDTH HEIGHT))
 
@@ -45,8 +46,8 @@
 ;; =================
 ;; Data Definitions:
 
-(define-struct game (invaders missiles tank))
-;; Game is (make-game  (listof Invader) (listof Missile) Tank)
+(define-struct game (invaders missiles tank tick))
+;; Game is (make-game  (listof Invader) (listof Missile) Tank Natural)
 ;; interp. the current state of a space invaders game
 ;;         with the current invaders, missiles and tank position
 
@@ -56,7 +57,8 @@
 (define (fn-for-game s)
   (... (fn-for-loinvader (game-invaders s))
        (fn-for-lom (game-missiles s))
-       (fn-for-tank (game-tank s))))
+       (fn-for-tank (game-tank s))
+       (fn-for-tick (game-tick s))))
 
 
 
@@ -104,11 +106,11 @@
 
 
 
-(define G0 (make-game empty empty T0))
-(define G1 (make-game empty empty T1))
-(define G2 (make-game (list I1) (list M1) T1))
-(define G3 (make-game (list I1 I2) (list M1 M2) T1))
-(define G4 (make-game empty empty T2))
+(define G0 (make-game empty empty T0 0))
+(define G1 (make-game empty empty T1 0))
+(define G2 (make-game (list I1) (list M1) T1 0))
+(define G3 (make-game (list I1 I2) (list M1 M2) T1 0))
+(define G4 (make-game empty empty T2 0))
 
 
 
@@ -168,10 +170,12 @@
                          (make-tank (+ (tank-x T0)
                                        (* (tank-dir T0)
                                           TANK-SPEED))
-                                    (tank-dir T0))))
+                                    (tank-dir T0))
+                         1))
 (check-expect (advance-game (make-game (list (make-invader 150 100 12))
                                        (list (make-missile 150 300))
-                                       (make-tank 50 1)))
+                                       (make-tank 50 1)
+                                       0))
               (make-game (list (make-invader (+ 150 12)
                                              (+ 100 INVADER-Y-SPEED)
                                              12))
@@ -179,45 +183,54 @@
                                              (- 300 MISSILE-SPEED)))
                          (make-tank (+ 50
                                        (* 1 TANK-SPEED))
-                                    1)))
+                                    1)
+                         1))
 
 ;(define (advance-game g) g) ;stub
 
 (define (advance-game g)
   (handle-collisions (maybe-spawn-invader (make-game (advance-invaders (game-invaders g))
                                                      (advance-missiles (game-missiles g))
-                                                     (advance-tank (game-tank g))))))
+                                                     (advance-tank (game-tank g))
+                                                     (add1 (game-tick g))))))
 
 
 ;; Game -> Game
 ;; remove collided invaders and missiles
-(check-expect (handle-collisions (make-game empty empty T0))
-              (make-game empty empty T0))
+(check-expect (handle-collisions (make-game empty empty T0 0))
+              (make-game empty empty T0 0))
 (check-expect (handle-collisions (make-game (list I1 I2)
                                             (list M1)
-                                            T0))
+                                            T0
+                                            0))
               (make-game (list I1 I2)
                          (list M1)
-                         T0))
+                         T0
+                         0))
 (check-expect (handle-collisions (make-game (list I1 I2)
                                             (list M2)
-                                            T0))
+                                            T0
+                                            0))
               (make-game (list I2)
                          empty
-                         T0))
+                         T0
+                         0))
 (check-expect (handle-collisions (make-game (list I1 I2)
                                             (list M3)
-                                            T0))
+                                            T0
+                                            0))
               (make-game (list I2)
                          empty
-                         T0))
+                         T0
+                         0))
 
 ;(define (handle-collisions g) g) ;stub
 
 (define (handle-collisions g)
   (make-game (remove-hit-invaders (game-invaders g) (game-missiles g))
              (remove-hit-missiles (game-missiles g) (game-invaders g))
-             (game-tank g)))
+             (game-tank g)
+             (game-tick g)))
 
 
 ;; ListOfInvader ListOfMissile -> ListOfInvader
@@ -392,13 +405,6 @@
 
 (define (missile-hit-invader? missile invader)
   (collision? missile invader))
-
-
-;; Game -> Game
-;; spawns invader if neccessary
-;; !!!
-
-(define (maybe-spawn-invader g) g) ;stub
 
 
 ;; ListOfInvader -> ListOfInvader
@@ -622,7 +628,7 @@
 
 ;; Game -> Image
 ;; render the game onto BACKGROUND
-(check-expect (render-game (make-game empty empty (make-tank (/ WIDTH 2) 1)))
+(check-expect (render-game (make-game empty empty (make-tank (/ WIDTH 2) 1) 0))
               (place-image TANK
                            (/ WIDTH 2)
                            (- HEIGHT TANK-HEIGHT/2)
@@ -630,7 +636,8 @@
 
 (check-expect (render-game (make-game (list (make-invader 150 100 12))
                                       (list (make-missile 150 300))
-                                      (make-tank 50 1)))
+                                      (make-tank 50 1)
+                                      0))
               (place-image INVADER
                            150
                            100
@@ -761,25 +768,30 @@
 ;; Game KeyEvent -> Game
 ;; change tank direction when pressing arrow keys, fire missiles when pressing space bar
 (check-expect (handle-key G2 "q") G2)
-(check-expect (handle-key (make-game (list I1) (list M1) T1) " ")
+(check-expect (handle-key (make-game (list I1) (list M1) T1 0) " ")
               (make-game (list I1)
                          (list (make-missile (tank-x T1) (- HEIGHT TANK-HEIGHT/2))
                                M1)
-                         T1))
+                         T1
+                         0))
 (check-expect (handle-key (make-game (list I1)
                                      (list M1)
-                                     (make-tank 100 1))
+                                     (make-tank 100 1)
+                                     0)
                           "left")
               (make-game (list I1)
                          (list M1)
-                         (make-tank 100 -1)))
+                         (make-tank 100 -1)
+                         0))
 (check-expect (handle-key (make-game (list I1)
                                      (list M1)
-                                     (make-tank 100 -1))
+                                     (make-tank 100 -1)
+                                     0)
                           "right")
               (make-game (list I1)
                          (list M1)
-                         (make-tank 100 1)))
+                         (make-tank 100 1)
+                         0))
 
 ;(define (handle-key g ke) g) ;stub
 
@@ -787,11 +799,13 @@
   (cond [(key=? key "left")
          (make-game (game-invaders g)
                     (game-missiles g)
-                    (switch-tank-dir-to-left (game-tank g)))]
+                    (switch-tank-dir-to-left (game-tank g))
+                    (game-tick g))]
         [(key=? key "right")
          (make-game (game-invaders g)
                     (game-missiles g)
-                    (switch-tank-dir-to-right (game-tank g)))]
+                    (switch-tank-dir-to-right (game-tank g))
+                    (game-tick g))]
         [(key=? key " ")
          (fire-missile g)]
         [else g]))
@@ -829,11 +843,12 @@
 
 ;; Game -> Game
 ;; returns game with new missile fired
-(check-expect (fire-missile (make-game (list I1) (list M1) T1))
+(check-expect (fire-missile (make-game (list I1) (list M1) T1 0))
               (make-game (list I1)
                          (list (make-missile (tank-x T1) (- HEIGHT TANK-HEIGHT/2))
                                M1)
-                         T1))
+                         T1
+                         0))
 
 ;(define (fire-missile g) g) ;stub
 
@@ -842,13 +857,14 @@
              (cons (make-missile (tank-x (game-tank g))
                                  (- HEIGHT TANK-HEIGHT/2))
                    (game-missiles g))
-             (game-tank g)))
+             (game-tank g)
+             (game-tick g)))
 
 
 ;; Game -> Boolean
 ;; return true if there is at least one landed invader, otherwise return false
-(check-expect (game-over? (make-game (list I1) (list M1 M2) T1)) false)
-(check-expect (game-over? (make-game (list (make-invader 150 HEIGHT 10)) (list M1 M2) T1)) true)
+(check-expect (game-over? (make-game (list I1) (list M1 M2) T1 0)) false)
+(check-expect (game-over? (make-game (list (make-invader 150 HEIGHT 10)) (list M1 M2) T1 0)) true)
 
 ;(define (game-over? g) false) ;stub
 
@@ -885,15 +901,57 @@
   (>= (invader-y i) HEIGHT))
 
 
+;; Game -> Game
+;; spawns invader if neccessary
+(check-random (maybe-spawn-invader (make-game empty empty T0 10))
+              (make-game empty empty T0 10))
+(check-random (maybe-spawn-invader (make-game empty empty T0 100))
+              (make-game (list (make-invader (random WIDTH) 0 (random-sign-int (random INVADER-MAX-SPEED)))) empty T0 100))
+
+;(define (maybe-spawn-invader g) g) ;stub
+
+(define (maybe-spawn-invader g)
+  (if (should-spawn-invader? (game-tick g))
+      (spawn-invader g)
+      g))
 
 
+;; () -> Integer
+;; generates random sign for the given integer
+(define (random-sign-int i)
+  (if (= (random 2) 0)
+      (+ 1 i)
+      (- (+ 1 i))))
 
 
+;; Natural -> Boolean
+;; returns true if the remainder of dividing the given number by INVADE-RATE is 0, otherwise return false
+(check-expect (should-spawn-invader? 20) false)
+(check-expect (should-spawn-invader? 100) true)
+(check-expect (should-spawn-invader? 140) false)
+(check-expect (should-spawn-invader? 200) true)
+
+;(define (should-spawn-invader? i) false) ;stub
+
+(define (should-spawn-invader? i)
+  (= (remainder i INVADE-RATE) 0))
 
 
+;; Game -> Game
+;; create and add new invader at the random x coordinate at the top, with random dx from -INVADER-MAX-SPEED to INVADER-MAX-SPEED excluding 0
+(check-random (spawn-invader (make-game empty empty T0 100))
+              (make-game (list (make-invader (random WIDTH) 0 (random-sign-int (random INVADER-MAX-SPEED)))) empty T0 100))
 
+;(define (spawn-invader g) g) ;stub
 
-
+(define (spawn-invader g)
+  (make-game (cons (make-invader (random WIDTH)
+                                 0
+                                 (random-sign-int (random INVADER-MAX-SPEED)))
+                   (game-invaders g))
+             (game-missiles g)
+             (game-tank g)
+             (game-tick g)))
 
 
 
