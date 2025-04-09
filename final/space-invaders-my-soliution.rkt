@@ -20,8 +20,8 @@
 
 (define HIT-RANGE 10)
 
-(define INVADE-RATE 50)
-(define INVADER-MAX-SPEED 10)
+(define INVADE-RATE 30)
+(define INVADER-MAX-SPEED 5)
 
 (define BACKGROUND (empty-scene WIDTH HEIGHT))
 
@@ -177,7 +177,7 @@
                                        (make-tank 50 1)
                                        0))
               (make-game (list (make-invader (+ 150 12)
-                                             (+ 100 INVADER-Y-SPEED)
+                                             (+ 100 12)
                                              12))
                          (list (make-missile 150
                                              (- 300 MISSILE-SPEED)))
@@ -301,46 +301,46 @@
               false)
 
 ; collisions depending on y coordinates
-(check-expect (collision? (make-missile 150 (+ 100 10))
+(check-expect (collision? (make-missile 150 (- 100 HIT-RANGE))
                           (make-invader 150 100 12))
               true)
-(check-expect (collision? (make-missile 150 (+ 100 5))
+(check-expect (collision? (make-missile 150 (- 100 (+ HIT-RANGE 1)))
+                          (make-invader 150 100 12))
+              false)
+(check-expect (collision? (make-missile 150 (+ 100 HIT-RANGE))
                           (make-invader 150 100 12))
               true)
-(check-expect (collision? (make-missile 150 (- 100 10))
+(check-expect (collision? (make-missile 150 (+ 100 (+ HIT-RANGE 1)))
                           (make-invader 150 100 12))
-              true)
-(check-expect (collision? (make-missile 150 (- 100 5))
-                          (make-invader 150 100 12))
-              true)
+              false)
 
 ; collisions depending on x coordinates
-(check-expect (collision? (make-missile (- 150 10) (+ 100 10))
-                          (make-invader 150 100 12))
-              false)
-(check-expect (collision? (make-missile (- 150 5) (+ 100 10))
+(check-expect (collision? (make-missile (- 150 HIT-RANGE) 100)
                           (make-invader 150 100 12))
               true)
-(check-expect (collision? (make-missile (+ 150 6) (+ 100 5))
+(check-expect (collision? (make-missile (- 150 (+ HIT-RANGE 1)) 100)
                           (make-invader 150 100 12))
               false)
-(check-expect (collision? (make-missile (+ 150 1) (+ 100 5))
+(check-expect (collision? (make-missile (+ 150 HIT-RANGE) 100)
                           (make-invader 150 100 12))
               true)
+(check-expect (collision? (make-missile (+ 150 (+ HIT-RANGE 1)) 100)
+                          (make-invader 150 100 12))
+              false)
 
 ;(define (collision? m i) false) ;stub
 
 (define (collision? m i)
   (and (<= (- (invader-x i)
-              5)
+              HIT-RANGE)
            (missile-x m)
            (+ (invader-x i)
-              5))
+              HIT-RANGE))
        (<= (- (invader-y i)
-              10)
+              HIT-RANGE)
            (missile-y m)
            (+ (invader-y i)
-              10))))
+              HIT-RANGE))))
 
 
 ;; ListOfMissile ListOfInvader -> ListOfMissile
@@ -412,19 +412,19 @@
 (check-expect (advance-invaders empty) empty)
 (check-expect (advance-invaders (list (make-invader 150 100 12)))
               (list (make-invader (+ 150 12)
-                                  (+ 100 INVADER-Y-SPEED)
+                                  (+ 100 12)
                                   12)))
 (check-expect (advance-invaders (list (make-invader 150 100 -12)))
               (list (make-invader (+ 150 -12)
-                                  (+ 100 INVADER-Y-SPEED)
+                                  (+ 100 12)
                                   -12)))
 (check-expect (advance-invaders (list (make-invader 150 100 12)
                                       (make-invader 150 100 -12)))
               (list (make-invader (+ 150 12)
-                                  (+ 100 INVADER-Y-SPEED)
+                                  (+ 100 12)
                                   12)
                     (make-invader (+ 150 -12)
-                                  (+ 100 INVADER-Y-SPEED)
+                                  (+ 100 12)
                                   -12)))
 
 ;(define (advance-invaders loi) loi) ;stub
@@ -442,11 +442,11 @@
 ; move
 (check-expect (move-invader (make-invader 150 100 12))
               (make-invader (+ 150 12)
-                            (+ 100 INVADER-Y-SPEED)
+                            (+ 100 12)
                             12))
 (check-expect (move-invader (make-invader 150 100 -12))
               (make-invader (+ 150 -12)
-                            (+ 100 INVADER-Y-SPEED)
+                            (+ 100 12)
                             -12))
 
 ; bounce from the edge and change direction
@@ -456,7 +456,7 @@
                                           10))
               (make-invader (- (+ WIDTH (/ (image-width INVADER) 2))
                                10)
-                            (+ 150 INVADER-Y-SPEED)
+                            (+ 150 10)
                             -10))
 
 ; > collision with right wall:
@@ -465,7 +465,7 @@
                                           10))
               (make-invader (- (+ WIDTH 3 (/ (image-width INVADER) 2))
                                10)
-                            (+ 150 INVADER-Y-SPEED)
+                            (+ 150 10)
                             -10))
 
 ; exact collision with left wall:
@@ -474,7 +474,7 @@
                                           -10))
               (make-invader (+ (- 0 (/ (image-width INVADER) 2))
                                10)
-                            (+ 150 INVADER-Y-SPEED)
+                            (+ 150 10)
                             10))
 
 ; > collision with left wall:
@@ -483,7 +483,7 @@
                                           -10))
               (make-invader (+ (- 0 3 (/ (image-width INVADER) 2))
                                10)
-                            (+ 150 INVADER-Y-SPEED)
+                            (+ 150 10)
                             10))
 
 ;(define (move-invader i) i) ;stub
@@ -493,19 +493,19 @@
          (make-invader (+ (invader-x i)
                           (- (invader-dx i)))
                        (+ (invader-y i)
-                          INVADER-Y-SPEED)
+                          (abs (invader-dx i)))
                        (- (invader-dx i)))]
         [(>= (invader-x i) WIDTH)
          (make-invader (- (invader-x i)
                           (invader-dx i))
                        (+ (invader-y i)
-                          INVADER-Y-SPEED)
+                          (abs (invader-dx i)))
                        (- (invader-dx i)))]
         [else
          (make-invader (+ (invader-x i)
                           (invader-dx i))
                        (+ (invader-y i)
-                          INVADER-Y-SPEED)
+                          (abs (invader-dx i)))
                        (invader-dx i))]))
 
 
@@ -905,8 +905,11 @@
 ;; spawns invader if neccessary
 (check-random (maybe-spawn-invader (make-game empty empty T0 10))
               (make-game empty empty T0 10))
-(check-random (maybe-spawn-invader (make-game empty empty T0 100))
-              (make-game (list (make-invader (random WIDTH) 0 (random-sign-int (random INVADER-MAX-SPEED)))) empty T0 100))
+(check-random (maybe-spawn-invader (make-game empty empty T0 (* 2 INVADE-RATE)))
+              (make-game (list (make-invader (random WIDTH) 0 (random-sign-int (random INVADER-MAX-SPEED))))
+                         empty
+                         T0
+                         (* 2 INVADE-RATE)))
 
 ;(define (maybe-spawn-invader g) g) ;stub
 
@@ -926,10 +929,9 @@
 
 ;; Natural -> Boolean
 ;; returns true if the remainder of dividing the given number by INVADE-RATE is 0, otherwise return false
-(check-expect (should-spawn-invader? 20) false)
-(check-expect (should-spawn-invader? 100) true)
-(check-expect (should-spawn-invader? 140) false)
-(check-expect (should-spawn-invader? 200) true)
+(check-expect (should-spawn-invader? (+ INVADE-RATE 1)) false)
+(check-expect (should-spawn-invader? (* 1 INVADE-RATE)) true)
+(check-expect (should-spawn-invader? (* 2 INVADE-RATE)) true)
 
 ;(define (should-spawn-invader? i) false) ;stub
 
@@ -952,11 +954,3 @@
              (game-missiles g)
              (game-tank g)
              (game-tick g)))
-
-
-
-
-
-
-
-
